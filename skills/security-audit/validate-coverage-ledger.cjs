@@ -2,7 +2,7 @@
 
 /**
  * Validates coverage-ledger.json and its canonical coverage IDs.
- * Usage: node validate-coverage-ledger.cjs <path-to-coverage-ledger.json>
+ * Usage: node validate-coverage-ledger.cjs <path-to-coverage-ledger.json> [--terminal]
  */
 
 const fs = require("node:fs");
@@ -836,6 +836,7 @@ function readFileWithinLimit(file) {
 
 function validateDocument(ledger, options = {}) {
   const opts = typeof options === "string" ? { baseDir: options } : (options || {});
+  const terminal = opts.terminal === true;
   const errors = createErrorList();
   if (!Array.isArray(ledger)) {
     errors.push("$: expected a top-level array");
@@ -855,6 +856,12 @@ function validateDocument(ledger, options = {}) {
   for (let index = 0; index < ledger.length && errors.length < LIMITS.validationErrors; index++) {
     const unit = ledger[index];
     errors.push(...collectUnitErrors(unit, index, opts));
+    if (terminal && isObject(unit) && unit.status === "in_progress") {
+      errors.push(`$[${index}].status: terminal ledger cannot include in_progress units`);
+    }
+    if (terminal && isObject(unit) && unit.status === "planned") {
+      errors.push(`$[${index}].status: terminal ledger cannot include planned units`);
+    }
     if (errors.length >= LIMITS.validationErrors) break;
     if (!isObject(unit) || typeof unit.coverage_id !== "string") continue;
 
@@ -883,12 +890,13 @@ function validateDocument(ledger, options = {}) {
 }
 
 function parseArgs(args) {
-  if (typeof args === "string") return { file: args, outputDir: null, schemaOnly: false };
-  if (!Array.isArray(args)) return { file: null, outputDir: null, schemaOnly: false };
+  if (typeof args === "string") return { file: args, outputDir: null, schemaOnly: false, terminal: false };
+  if (!Array.isArray(args)) return { file: null, outputDir: null, schemaOnly: false, terminal: false };
 
   let file = null;
   let outputDir = null;
   let schemaOnly = false;
+  let terminal = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === "--output-dir" || arg === "--base-dir") {
@@ -899,11 +907,13 @@ function parseArgs(args) {
       outputDir = arg.slice("--base-dir=".length);
     } else if (arg === "--schema-only") {
       schemaOnly = true;
+    } else if (arg === "--terminal") {
+      terminal = true;
     } else if (!arg.startsWith("-") && file === null) {
       file = arg;
     }
   }
-  return { file, outputDir, schemaOnly };
+  return { file, outputDir, schemaOnly, terminal };
 }
 
 function run(input, options = {}) {
@@ -911,9 +921,10 @@ function run(input, options = {}) {
   const file = parsed.file;
   const outputDir = (options && (options.outputDir || options.baseDir)) || parsed.outputDir;
   const schemaOnly = (options && options.schemaOnly) || parsed.schemaOnly;
+  const terminal = (options && options.terminal) || parsed.terminal;
 
   if (!file) {
-    console.error("Usage: node validate-coverage-ledger.cjs <path-to-coverage-ledger.json> [--output-dir <run-dir>]");
+    console.error("Usage: node validate-coverage-ledger.cjs <path-to-coverage-ledger.json> [--output-dir <run-dir>] [--terminal]");
     return 1;
   }
 
@@ -945,7 +956,7 @@ function run(input, options = {}) {
 
   let errors;
   try {
-    errors = validateDocument(ledger, { baseDir });
+    errors = validateDocument(ledger, { baseDir, terminal });
   } catch {
     console.error("Failed to validate coverage ledger: unexpected validation error");
     return 1;
