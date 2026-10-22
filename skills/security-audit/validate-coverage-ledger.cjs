@@ -911,6 +911,10 @@ function parseArgs(args) {
       terminal = true;
     } else if (!arg.startsWith("-") && file === null) {
       file = arg;
+    } else if (!arg.startsWith("-")) {
+      // A second input path would be silently skipped; refuse it so a shell glob
+      // cannot produce a false PASS for the files that were never read.
+      return { file: null, outputDir, schemaOnly, terminal };
     }
   }
   return { file, outputDir, schemaOnly, terminal };
