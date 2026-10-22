@@ -54,6 +54,9 @@ A bounded request can enqueue repeated spend, send, mutation, or external API wo
 **Commercial API spend asymmetry and denial of wallet**
 Unauthenticated or unmetered entry points forward user-influenced prompts or unbounded generation requests to commercial frontier models with high per-token pricing. A low-cost caller request generates disproportionately large model context or output tokens, exhausting API credits or concurrency quotas. Confirm token limits, user rate limiting, and cost-containment controls around expensive model invocations.
 
+**Streaming and partial-turn early dispatch**
+The dispatcher acts on tool-call arguments or interpreter input as they stream in, before the model's turn is finalized, so a side effect can fire on an argument set the model has not finished emitting or on content a later stop, cancel, or edit event retracts from the logged turn. Trace where the handler reads argument state: on each incremental chunk, on a heuristic "looks complete" parse, or only after the provider's finalized, validated turn. Confirm a fired side effect is held pending finalization, reversible, or bound to the same object the log records; a race between a cancellation and an already-dispatched action is a defect independent of prompt content. Read-only prefetch that cannot mutate state or disclose data beyond the requester is not a finding.
+
 ## MCP and sub-agent trust classes (subagent_type: `general`)
 
 **Sub-agent and MCP trust inheritance**
