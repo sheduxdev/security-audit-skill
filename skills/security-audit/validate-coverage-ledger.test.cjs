@@ -559,6 +559,14 @@ test("allows shared artifacts within an archived attempt but rejects cross-attem
   assert(errorsFor([archivedReuse]).some((error) => error.includes("artifact from an earlier attempt cannot be reused")));
 });
 
+test("accepts an unassigned deferred unit after a malformed hunter return", () => {
+  const deferred = unit({
+    status: "deferred",
+    unresolved: ["malformed_hunter_return"],
+  });
+  assert.deepEqual(errorsFor([deferred]), []);
+});
+
 test("rejects reassignment owner reuse and evidence mixing", () => {
   const reusedOwner = unit({
     attempts: [archivedAttempt()],
